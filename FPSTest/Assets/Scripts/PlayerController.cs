@@ -1,19 +1,24 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class PlayerController : MonoBehaviour {
     private static PlayerController _instance;
 
     public GameObject m_playerHeadGO;
-    public Transform m_muzzleTransform;
-    public GameObject m_bulletPrefab;
+    public GameObject m_WeaponHUDImgGO;
+    public GameObject m_WeaponHUDWeaponsContainerGO;
+    public GameObject m_WeaponHUDAmmoTextGO;
+    public GameObject m_WeaponHUDHealthTextGO;
 
     public float m_runSpeed = 1.0f;
     public float m_sprintMultiplier = 1;
     public float m_mouseSenstivity = 1.0f;
     public float m_jumpForce = 5.0f;
-    public Animator m_weaponAnimator;
+
+    public int m_totalHealth = 100;
+    int m_currentHealth;
 
     bool m_isgrounded = false;
 
@@ -25,11 +30,10 @@ public class PlayerController : MonoBehaviour {
 
     Vector3 m_movement;
 
-    float m_shootInterval = 0.1f;
-
     Vector3 m_currentPlayerPos;
     Vector3 m_lastPlayerPos;
 
+    WeaponSystemLogic m_weaponSystem;
 
     public static PlayerController Instance
     {
@@ -40,6 +44,14 @@ public class PlayerController : MonoBehaviour {
     void Awake () {
         _instance = this;
         Cursor.visible = false;
+        m_weaponSystem = this.GetComponent<WeaponSystemLogic>();
+    }
+
+    void Start()
+    {
+        SwitchWeapon(0);
+        m_weaponSystem.ReloadAmmo();
+        m_currentHealth = m_totalHealth;
     }
 
     // Update is called once per frame
@@ -47,28 +59,42 @@ public class PlayerController : MonoBehaviour {
     {
         if (Input.GetMouseButtonDown(1))
         {
-            Debug.Log("Mouse button pressed");
             StopCoroutine("ShowMouseScope");
             StartCoroutine("ShowMouseScope");
         }
-        if (Input.GetMouseButtonDown(0))
+        if (Input.GetMouseButtonDown(0) && m_weaponSystem.CurrentWeapon().m_isShootable)
         {
-            StopCoroutine("Shoot");
-            StartCoroutine("Shoot");
+            m_weaponSystem.Shoot();
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            SwitchWeapon(0);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            SwitchWeapon(1);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            SwitchWeapon(2);
+        }
+        else if (Input.GetKeyDown(KeyCode.Alpha4))
+        {
+            SwitchWeapon(3);
+        }
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            m_weaponSystem.ReloadAmmo();
         }
     }
 
-    IEnumerator Shoot()
+    void SwitchWeapon(int id)
     {
-        while(Input.GetMouseButton(0))
-        {
-            Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.375f, 0));
-            GameObject tempBullet = Instantiate(m_bulletPrefab, m_muzzleTransform.position, Quaternion.identity) as GameObject;
-            tempBullet.transform.LookAt(ray.GetPoint(500));
-
-            yield return new WaitForSeconds(m_shootInterval);
-        }
+        m_weaponSystem.SwitchWeapon(id);
+        UpdateWeaponHUD();
     }
+
 
 	void FixedUpdate () {
 
@@ -100,6 +126,8 @@ public class PlayerController : MonoBehaviour {
             {
                 Vector3 forwardForce = (m_currentPlayerPos - m_lastPlayerPos) * 30;
                 Debug.Log(forwardForce);
+                forwardForce = new Vector3(Mathf.Clamp(forwardForce.x, -0.3f, 0.3f), forwardForce.y, forwardForce.z);
+                Debug.Log(forwardForce);
                 this.GetComponent<Rigidbody>().AddForce((Vector3.up * m_jumpForce + forwardForce) * tempMultiplier , ForceMode.Impulse);
                 Debug.Log("Jump");
             }
@@ -114,15 +142,51 @@ public class PlayerController : MonoBehaviour {
         }
     }
 
+    public void UpdateHealth(int amount)
+    {
+        m_currentHealth += amount;
+        m_WeaponHUDHealthTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_currentHealth.ToString(), m_totalHealth.ToString());
+    }
+
+    void UpdateWeaponHUD()
+    {
+        m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_weaponSystem.CurrentWeapon().m_weaponSprite;
+        for (int i = 1; i <= m_weaponSystem.m_weaponList.Count; i++)
+        {
+            string tempName = "Weapon" + i.ToString();
+            Transform currentWeaponGO = m_WeaponHUDWeaponsContainerGO.transform.FindChild(tempName);
+            if (currentWeaponGO == null)
+            {
+                currentWeaponGO = (Instantiate(m_WeaponHUDWeaponsContainerGO.transform.FindChild("Weapon1").gameObject, Vector3.zero, Quaternion.identity) as GameObject).transform;
+                currentWeaponGO.parent = m_WeaponHUDWeaponsContainerGO.transform;
+                currentWeaponGO.name = tempName;
+            }
+
+            currentWeaponGO.FindChild("Image").GetComponent<Image>().sprite = m_weaponSystem.m_weaponList[i - 1].m_weaponSprite;
+            if(m_weaponSystem.m_weaponList[i - 1] == m_weaponSystem.CurrentWeapon())
+            {
+                currentWeaponGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
+            }
+            else
+                currentWeaponGO.GetComponent<Image>().color = new Color(1, 1, 1, 0.3f);
+        }
+    }
+
+    public void UpdateAmmoAmountHUD()
+    {
+        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon().m_currentClipAmmo, m_weaponSystem.CurrentWeapon().m_totalAmmo);
+    }
+
+
     IEnumerator ShowMouseScope()
     {
-        m_weaponAnimator.SetBool("Zoom", true);
+        m_weaponSystem.CurrentWeapon().m_weaponGO.GetComponent<Animator>().SetBool("Zoom", true);
         while (Input.GetMouseButton(1))
         {
           
             yield return null;
         }
-        m_weaponAnimator.SetBool("Zoom", false);
+        m_weaponSystem.CurrentWeapon().m_weaponGO.GetComponent<Animator>().SetBool("Zoom", false);
     }
 
     void OnCollisionEnter(Collision coll)

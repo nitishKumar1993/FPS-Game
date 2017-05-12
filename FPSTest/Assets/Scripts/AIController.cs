@@ -5,6 +5,8 @@ using UnityEngine.AI;
 
 public class AIController : MonoBehaviour {
 
+    public int m_damage = 10;
+
 	// Use this for initialization
 	void Start () {
         StartCoroutine(MoveTowardPlayer());
@@ -22,5 +24,11 @@ public class AIController : MonoBehaviour {
 	public void OnGotHit()
     {
         Destroy(this.gameObject);
+    }
+
+    void OnCollisionEnter(Collision coll)
+    {
+        Debug.Log(coll.transform.name);
+        PlayerController.Instance.UpdateHealth(-m_damage);
     }
 }

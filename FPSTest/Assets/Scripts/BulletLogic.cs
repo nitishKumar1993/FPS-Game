@@ -21,11 +21,9 @@ public class BulletLogic : MonoBehaviour {
         this.transform.GetChild(0).gameObject.SetActive(true);
         Invoke("DestroyGO", 1);
         StopCoroutine("Expire");
-        Debug.Log(coll.transform.tag);
         if (coll.transform.tag == "AI")
         {
-            Debug.Log("OnAIHit");
-            coll.transform.parent.GetComponent<AIController>().OnGotHit();
+            coll.transform.GetComponent<AIController>().OnGotHit();
         }
     }
 
