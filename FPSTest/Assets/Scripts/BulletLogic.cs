@@ -19,7 +19,7 @@ public class BulletLogic : MonoBehaviour {
         this.GetComponent<Rigidbody>().isKinematic = true;
         this.GetComponent<MeshRenderer>().enabled = false;
         this.transform.GetChild(0).gameObject.SetActive(true);
-        Invoke("DestroyGO", 1);
+        Invoke("DestroyGO", 0.5f);
         StopCoroutine("Expire");
         if (coll.transform.tag == "AI")
         {

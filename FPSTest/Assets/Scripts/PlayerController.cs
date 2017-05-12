@@ -11,16 +11,20 @@ public class PlayerController : MonoBehaviour {
     public GameObject m_WeaponHUDWeaponsContainerGO;
     public GameObject m_WeaponHUDAmmoTextGO;
     public GameObject m_WeaponHUDHealthTextGO;
+    public Image m_WeaponHUDBloodScreenImg;
+
+    public GameObject m_gameoverGO;
 
     public float m_runSpeed = 1.0f;
     public float m_sprintMultiplier = 1;
     public float m_mouseSenstivity = 1.0f;
     public float m_jumpForce = 5.0f;
 
-    public int m_totalHealth = 100;
+    int m_totalHealth = 100;
     int m_currentHealth;
 
     bool m_isgrounded = false;
+    bool m_isPlayerDead = false;
 
     float m_moveFB;
     float m_moveLR;
@@ -34,21 +38,34 @@ public class PlayerController : MonoBehaviour {
     Vector3 m_lastPlayerPos;
 
     WeaponSystemLogic m_weaponSystem;
+    
 
     public static PlayerController Instance
     {
         get { return _instance; }
     }
 
+    public int CurrentHealth
+    {
+        get { return m_currentHealth; }
+    }
+
+    public bool IsPlayerDead
+    {
+        get { return m_isPlayerDead; }
+    }
+
     // Use this for initialization
     void Awake () {
         _instance = this;
         Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
         m_weaponSystem = this.GetComponent<WeaponSystemLogic>();
     }
 
     void Start()
     {
+        m_playerHeadGO.transform.eulerAngles = Vector3.zero;
         SwitchWeapon(0);
         m_weaponSystem.ReloadAmmo();
         m_currentHealth = m_totalHealth;
@@ -57,35 +74,54 @@ public class PlayerController : MonoBehaviour {
     // Update is called once per frame
     void Update()
     {
-        if (Input.GetMouseButtonDown(1))
+        if (!m_isPlayerDead)
         {
-            StopCoroutine("ShowMouseScope");
-            StartCoroutine("ShowMouseScope");
-        }
-        if (Input.GetMouseButtonDown(0) && m_weaponSystem.CurrentWeapon().m_isShootable)
-        {
-            m_weaponSystem.Shoot();
-        }
+            if (Input.GetMouseButtonDown(1))
+            {
+                StopCoroutine("ShowMouseScope");
+                StartCoroutine("ShowMouseScope");
+            }
+            if (Input.GetMouseButtonDown(0) && m_weaponSystem.CurrentWeapon.m_isShootable)
+            {
+                m_weaponSystem.Shoot();
+            }
 
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            SwitchWeapon(0);
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            SwitchWeapon(1);
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            SwitchWeapon(2);
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha4))
-        {
-            SwitchWeapon(3);
-        }
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            m_weaponSystem.ReloadAmmo();
+            if (Input.GetKeyDown(KeyCode.Alpha1))
+            {
+                SwitchWeapon(0);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha2))
+            {
+                SwitchWeapon(1);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha3))
+            {
+                SwitchWeapon(2);
+            }
+            else if (Input.GetKeyDown(KeyCode.Alpha4))
+            {
+                SwitchWeapon(3);
+            }
+
+            if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
+            {
+                int weaponID = m_weaponSystem.CurrentWeaponID + 1;
+                if (weaponID == m_weaponSystem.m_weaponList.Count)
+                    weaponID = 0;
+                SwitchWeapon(weaponID);
+            }
+            else if (Input.GetAxis("Mouse ScrollWheel") < 0f) // backwards
+            {
+                int weaponID = m_weaponSystem.CurrentWeaponID - 1;
+                if (weaponID < 0)
+                    weaponID = m_weaponSystem.m_weaponList.Count - 1;
+                SwitchWeapon(weaponID);
+            }
+
+            if (Input.GetKeyDown(KeyCode.R))
+            {
+                m_weaponSystem.ReloadAmmo();
+            }
         }
     }
 
@@ -97,60 +133,99 @@ public class PlayerController : MonoBehaviour {
 
 
 	void FixedUpdate () {
-
-        m_rotX = Input.GetAxis("Mouse X") * m_mouseSenstivity;
-        m_rotY = Input.GetAxis("Mouse Y") * m_mouseSenstivity;
-
-        transform.Rotate(0, m_rotX, 0);
-        m_playerHeadGO.transform.Rotate(-m_rotY, 0, 0);
-        Quaternion tempRot = m_playerHeadGO.transform.rotation;
-        tempRot = new Quaternion(Mathf.Clamp(tempRot.x, -0.3f, 0.3f), tempRot.y, tempRot.z, tempRot.w);
-        m_playerHeadGO.transform.rotation = tempRot;
-        m_playerHeadGO.transform.eulerAngles = new Vector3(m_playerHeadGO.transform.eulerAngles.x, m_playerHeadGO.transform.eulerAngles.y, 0) ;
-
-        if (m_isgrounded)
+        if (!m_isPlayerDead)
         {
-            m_currentPlayerPos = this.transform.position;
+            m_rotX = Input.GetAxis("Mouse X") * m_mouseSenstivity;
+            m_rotY = Input.GetAxis("Mouse Y") * m_mouseSenstivity;
 
-            float tempMultiplier = 1;
-            m_moveFB = Input.GetAxis("Vertical") * m_runSpeed;
-            m_moveLR = Input.GetAxis("Horizontal") * m_runSpeed;
+            transform.Rotate(0, m_rotX, 0);
+            m_playerHeadGO.transform.Rotate(-m_rotY, 0, 0);
+            Quaternion tempRot = m_playerHeadGO.transform.rotation;
+            tempRot = new Quaternion(Mathf.Clamp(tempRot.x, -0.3f, 0.3f), tempRot.y, tempRot.z, tempRot.w);
+            m_playerHeadGO.transform.rotation = tempRot;
+            m_playerHeadGO.transform.eulerAngles = new Vector3(m_playerHeadGO.transform.eulerAngles.x, m_playerHeadGO.transform.eulerAngles.y, 0);
 
-            m_movement = new Vector3(m_moveLR, 0, m_moveFB);
-            if (Input.GetKey(KeyCode.LeftShift))
+            if (m_isgrounded)
             {
-                tempMultiplier = m_sprintMultiplier;
-            }
+                m_currentPlayerPos = this.transform.position;
 
-            if (Input.GetAxis("Jump") > 0)
-            {
-                Vector3 forwardForce = (m_currentPlayerPos - m_lastPlayerPos) * 30;
-                Debug.Log(forwardForce);
-                forwardForce = new Vector3(Mathf.Clamp(forwardForce.x, -0.3f, 0.3f), forwardForce.y, forwardForce.z);
-                Debug.Log(forwardForce);
-                this.GetComponent<Rigidbody>().AddForce((Vector3.up * m_jumpForce + forwardForce) * tempMultiplier , ForceMode.Impulse);
-                Debug.Log("Jump");
-            }
-            m_movement *= tempMultiplier;
+                float tempMultiplier = 1;
+                m_moveFB = Input.GetAxis("Vertical") * m_runSpeed;
+                m_moveLR = Input.GetAxis("Horizontal") * m_runSpeed;
 
-            if (Input.GetKey(KeyCode.LeftShift))
-            {
-                m_movement *= m_sprintMultiplier;
+                m_movement = new Vector3(m_moveLR, 0, m_moveFB);
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    tempMultiplier = m_sprintMultiplier;
+                }
+
+                if (Input.GetAxis("Jump") > 0)
+                {
+                    Vector3 forwardForce = (m_currentPlayerPos - m_lastPlayerPos) * 30;
+                    forwardForce = new Vector3(Mathf.Clamp(forwardForce.x, -0.3f, 0.3f), forwardForce.y, forwardForce.z);
+                    this.GetComponent<Rigidbody>().AddForce((Vector3.up * m_jumpForce + forwardForce) * tempMultiplier, ForceMode.Impulse);
+                    Debug.Log("Jump");
+                }
+                m_movement *= tempMultiplier;
+
+                if (Input.GetKey(KeyCode.LeftShift))
+                {
+                    m_movement *= m_sprintMultiplier;
+                }
+                this.transform.Translate(m_movement * Time.deltaTime);
+                m_lastPlayerPos = m_currentPlayerPos;
             }
-            this.transform.Translate(m_movement * Time.deltaTime);
-            m_lastPlayerPos = m_currentPlayerPos;
+        }
+    }
+
+    public void OnPlayerDamage(int amount)
+    {
+        UpdateHealth(-amount);
+
+        StopCoroutine("AnimateBloodOnScreen");
+        StartCoroutine("AnimateBloodOnScreen");
+    }
+
+    public void HealPlayer(int amount)
+    {
+        UpdateHealth(amount);
+    }
+
+    IEnumerator AnimateBloodOnScreen()
+    {
+        Color currentColor = m_WeaponHUDBloodScreenImg.color;
+        m_WeaponHUDBloodScreenImg.color = new Color(currentColor.r, currentColor.g, currentColor.b, currentColor.a + 0.3f);
+        float alpha = Mathf.Clamp(m_WeaponHUDBloodScreenImg.color.a, 0, 1);
+        while (alpha > 0)
+        {
+            alpha -= 0.005f;
+            m_WeaponHUDBloodScreenImg.color = new Color(currentColor.r, currentColor.g, currentColor.b, alpha);
+            yield return null;
         }
     }
 
     public void UpdateHealth(int amount)
     {
         m_currentHealth += amount;
+        m_currentHealth = Mathf.Clamp(m_currentHealth, 0, m_totalHealth);
         m_WeaponHUDHealthTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_currentHealth.ToString(), m_totalHealth.ToString());
+        if(CurrentHealth <= 0)
+        {
+            ShowGameover();
+        }
+    }
+
+    void ShowGameover()
+    {
+        m_gameoverGO.SetActive(true);
+        Cursor.visible = true;
+        Cursor.lockState = CursorLockMode.None;
+        m_isPlayerDead = true;
     }
 
     void UpdateWeaponHUD()
     {
-        m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_weaponSystem.CurrentWeapon().m_weaponSprite;
+        m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_weaponSystem.CurrentWeapon.m_weaponSprite;
         for (int i = 1; i <= m_weaponSystem.m_weaponList.Count; i++)
         {
             string tempName = "Weapon" + i.ToString();
@@ -158,12 +233,12 @@ public class PlayerController : MonoBehaviour {
             if (currentWeaponGO == null)
             {
                 currentWeaponGO = (Instantiate(m_WeaponHUDWeaponsContainerGO.transform.FindChild("Weapon1").gameObject, Vector3.zero, Quaternion.identity) as GameObject).transform;
-                currentWeaponGO.parent = m_WeaponHUDWeaponsContainerGO.transform;
+                currentWeaponGO.SetParent(m_WeaponHUDWeaponsContainerGO.transform,false);
                 currentWeaponGO.name = tempName;
             }
 
             currentWeaponGO.FindChild("Image").GetComponent<Image>().sprite = m_weaponSystem.m_weaponList[i - 1].m_weaponSprite;
-            if(m_weaponSystem.m_weaponList[i - 1] == m_weaponSystem.CurrentWeapon())
+            if(m_weaponSystem.m_weaponList[i - 1] == m_weaponSystem.CurrentWeapon)
             {
                 currentWeaponGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
             }
@@ -174,19 +249,19 @@ public class PlayerController : MonoBehaviour {
 
     public void UpdateAmmoAmountHUD()
     {
-        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon().m_currentClipAmmo, m_weaponSystem.CurrentWeapon().m_totalAmmo);
+        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon.m_currentClipAmmo, m_weaponSystem.CurrentWeapon.m_totalAmmo);
     }
 
 
     IEnumerator ShowMouseScope()
     {
-        m_weaponSystem.CurrentWeapon().m_weaponGO.GetComponent<Animator>().SetBool("Zoom", true);
+        m_weaponSystem.CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("Zoom", true);
         while (Input.GetMouseButton(1))
         {
           
             yield return null;
         }
-        m_weaponSystem.CurrentWeapon().m_weaponGO.GetComponent<Animator>().SetBool("Zoom", false);
+        m_weaponSystem.CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("Zoom", false);
     }
 
     void OnCollisionEnter(Collision coll)

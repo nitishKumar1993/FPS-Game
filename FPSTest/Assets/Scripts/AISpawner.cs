@@ -17,9 +17,9 @@ public class AISpawner : MonoBehaviour {
 	
     IEnumerator SpawnAIs()
     {
-        while(true)
+        while (!PlayerController.Instance.IsPlayerDead)
         {
-            GameObject tempAI = Instantiate(m_aiNormalPrefab, m_spawnPointsList[Random.Range(0, m_spawnPointsList.Count - 1)].position, Quaternion.identity) as GameObject;
+            Instantiate(m_aiNormalPrefab, m_spawnPointsList[Random.Range(0, m_spawnPointsList.Count - 1)].position, Quaternion.identity);
             yield return new WaitForSeconds(Random.Range(m_intervalRangeMin, m_intervalRangeMax));
         }
     }

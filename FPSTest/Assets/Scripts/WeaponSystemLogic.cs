@@ -5,13 +5,25 @@ using UnityEngine;
 public class WeaponSystemLogic : MonoBehaviour {
 
     public List<Weapon> m_weaponList;
+    public List<Weapon> m_throughableList;
 
     Weapon m_currentWeapon;
     int m_currentWeaponID = -1;
 
-    public Weapon CurrentWeapon()
+    public Weapon CurrentWeapon
     {
-        return m_currentWeapon;
+        get { return m_currentWeapon; }
+    }
+
+    public int CurrentWeaponID
+    {
+     get { return m_currentWeaponID; }
+    }
+
+    //Ammo including in the actove clip
+    public int CurrentWeaponTotalAmmo
+    {
+        get { return m_currentWeapon.m_totalAmmo + m_currentWeapon.m_currentClipAmmo; }
     }
 
     public void SwitchWeapon(int WeaponId)
@@ -19,19 +31,26 @@ public class WeaponSystemLogic : MonoBehaviour {
         if (WeaponId < m_weaponList.Count && m_currentWeaponID != WeaponId)
         {
             m_currentWeaponID = WeaponId;
-            Debug.Log("SwitchWeapon");
             foreach (Weapon item in m_weaponList)
             {
                 item.m_weaponGO.SetActive(false);
             }
             m_currentWeapon = m_weaponList[WeaponId];
             m_currentWeapon.m_weaponGO.SetActive(true);
+            if (m_currentWeapon.m_currentClipAmmo == 0)
+                ReloadAmmo();
             this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
         }
         else
         {
             Debug.Log("Weopon id not found in the list or already equipped");
         }
+    }
+
+    public void AddAmmo(int amount)
+    {
+        m_currentWeapon.m_totalAmmo += amount;
+        this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
     }
 
     public void ReloadAmmo()
@@ -78,11 +97,15 @@ public class WeaponSystemLogic : MonoBehaviour {
     }
 }
 
+public enum WeaponType { HandHeld,Throughable}
+
 [System.Serializable]
 public class Weapon
 {
+    public WeaponType m_type;
     public GameObject m_weaponGO;
     public int m_totalAmmo;
+    public int m_maxAmmo;
     public int m_ammoPerClip;
     public int m_currentClipAmmo;
     public float m_shootInterval;
