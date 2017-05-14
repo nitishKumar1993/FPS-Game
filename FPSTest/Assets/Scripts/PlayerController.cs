@@ -331,7 +331,7 @@ public class PlayerController : MonoBehaviour {
             {
                 if (!m_isgrounded)
                 {
-                    Invoke("SetIsGroundedTrue", 0.2f);
+                    Invoke("SetIsGroundedTrue", 0.1f);
                 }
             }
         }

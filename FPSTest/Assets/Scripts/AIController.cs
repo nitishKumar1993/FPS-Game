@@ -44,7 +44,7 @@ public class AIController : MonoBehaviour {
     void DestroyAndCheckDropables()
     {
         DropableManager.Instance.CheckAndDropItem(this.transform.position);
-        Destroy(this.gameObject);
+        AISpawner.Instance.DestroyAI(this.gameObject);
     }
 
     void OnCollisionEnter(Collision coll)

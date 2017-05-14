@@ -7,6 +7,7 @@ using UnityEngine.UI;
 public class GameManager : MonoBehaviour {
     private static GameManager _instance;
     public GameObject m_toastGO;
+    public GameObject m_quitPanelGO;
 
     string m_toastMsg = "";
 
@@ -19,6 +20,33 @@ public class GameManager : MonoBehaviour {
 	void Awake () {
         _instance = this;
 	}
+
+    void Update()
+    {
+        if(Input.GetKeyDown(KeyCode.Escape))
+        {
+            if (!m_quitPanelGO.activeSelf)
+            {
+                m_quitPanelGO.SetActive(true);
+                Cursor.visible = true;
+                Cursor.lockState = CursorLockMode.None;
+            }
+            else
+                OnQuitCancelBtnClicked();
+        }
+    }
+
+    public void OnQuitBtnClicked()
+    {
+        Application.Quit();
+    }
+
+    public void OnQuitCancelBtnClicked()
+    {
+        m_quitPanelGO.SetActive(false);
+        Cursor.visible = false;
+        Cursor.lockState = CursorLockMode.Locked;
+    }
 
     public void ShowToast(string msg,bool _override = false)
     {
