@@ -5,6 +5,7 @@ using UnityEngine;
 public class BulletLogic : MonoBehaviour {
 
     float m_expiryTime = 10;
+    
 
 	// Use this for initialization
 	void Start () {
@@ -23,7 +24,7 @@ public class BulletLogic : MonoBehaviour {
         StopCoroutine("Expire");
         if (coll.transform.tag == "AI")
         {
-            coll.transform.GetComponent<AIController>().OnGotHit();
+            coll.transform.GetComponent<AIController>().OnGotHit(PlayerController.Instance.m_weaponSystem.CurrentWeapon.m_damage);
         }
     }
 

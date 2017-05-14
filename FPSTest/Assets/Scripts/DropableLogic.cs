@@ -29,12 +29,11 @@ public class DropableLogic : MonoBehaviour {
     {
         if(coll.tag == "Player")
         {
-            ApplyEffect();
-            Destroy(this.gameObject);
+            StartCoroutine(ApplyEffect());
         }
     }
 
-    void ApplyEffect()
+    IEnumerator ApplyEffect()
     {
         switch(m_type)
         {
@@ -42,9 +41,21 @@ public class DropableLogic : MonoBehaviour {
                 PlayerController.Instance.HealPlayer(m_healthHealValue);
                 break;
             case DropabeType.Ammo:
-                PlayerController.Instance.gameObject.GetComponent<WeaponSystemLogic>().AddAmmo(m_ammoAmount);
+                PlayerController.Instance.m_weaponSystem.AddAmmo(m_ammoAmount);
                 break;
         }
+
+        float tempTimer = 1;
+        this.GetComponent<BoxCollider>().enabled = false;
+        this.transform.GetChild(0).GetComponent<MeshRenderer>().enabled = false;
+        this.transform.GetChild(0).FindChild("Particle System").gameObject.SetActive(false);
+        this.transform.GetChild(0).FindChild("Particle System2").gameObject.SetActive(true);
+        while (tempTimer > 0)
+        {
+
+            yield return null;
+        }
+        Destroy(this.gameObject);
     }
 }
 

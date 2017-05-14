@@ -24,17 +24,28 @@ public class DropableManager : MonoBehaviour {
 	
     public void CheckAndDropItem(Vector3 pos)
     {
-        Debug.Log("CheckAndDropItem");
         if(Random.Range(0,101) <= m_dropChance)
         {
-            Debug.Log("Dropping");
-            if (PlayerController.Instance.CurrentHealth <= m_healthDropThreshold)
+            GameObject tempDropable = null;
+            if (PlayerController.Instance.CurrentHealth > m_healthDropThreshold/2)
             {
-                Instantiate(m_healthDropablePrefab, new Vector3(pos.x, m_healthDropablePrefab.transform.position.y, pos.z), Quaternion.identity) ;
+                if (PlayerController.Instance.m_weaponSystem.CurrentWeaponTotalAmmo < m_ammoDropThreshold)
+                {
+                    tempDropable = Instantiate(m_ammoDropablePrefab, pos , Quaternion.identity) as GameObject;
+                }
+                else if (PlayerController.Instance.CurrentHealth <= m_healthDropThreshold)
+                {
+                    tempDropable = Instantiate(m_healthDropablePrefab, pos , Quaternion.identity) as GameObject;
+                }
             }
-            else if (PlayerController.Instance.gameObject.GetComponent<WeaponSystemLogic>().CurrentWeaponTotalAmmo < m_ammoDropThreshold)
+            else 
             {
-                Instantiate(m_ammoDropablePrefab, new Vector3(pos.x, m_ammoDropablePrefab.transform.position.y, pos.z), Quaternion.identity);
+                tempDropable = Instantiate(m_healthDropablePrefab, pos , Quaternion.identity);
+            }
+            if (tempDropable != null)
+            {
+                Vector3 tempPos = tempDropable.transform.Find("Mesh/Plane").transform.position;
+                tempDropable.transform.Find("Mesh/Plane").transform.position = new Vector3(tempPos.x, 0, tempPos.z);
             }
         }
     }

@@ -25,6 +25,7 @@ public class PlayerController : MonoBehaviour {
 
     bool m_isgrounded = false;
     bool m_isPlayerDead = false;
+    bool m_isScoped = false;
 
     float m_moveFB;
     float m_moveLR;
@@ -32,12 +33,7 @@ public class PlayerController : MonoBehaviour {
     float m_rotX;
     float m_rotY;
 
-    Vector3 m_movement;
-
-    Vector3 m_currentPlayerPos;
-    Vector3 m_lastPlayerPos;
-
-    WeaponSystemLogic m_weaponSystem;
+    public WeaponSystemLogic m_weaponSystem;
     
 
     public static PlayerController Instance
@@ -102,6 +98,10 @@ public class PlayerController : MonoBehaviour {
             {
                 SwitchWeapon(3);
             }
+            else if (Input.GetKeyDown(KeyCode.F))
+            {
+                m_weaponSystem.AttackMelee();
+            }
 
             if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
             {
@@ -135,47 +135,75 @@ public class PlayerController : MonoBehaviour {
 	void FixedUpdate () {
         if (!m_isPlayerDead)
         {
-            m_rotX = Input.GetAxis("Mouse X") * m_mouseSenstivity;
-            m_rotY = Input.GetAxis("Mouse Y") * m_mouseSenstivity;
+            m_rotX = Input.GetAxis("Mouse X") * m_mouseSenstivity * (m_isScoped ? 0.5f : 1);
+            m_rotY = Input.GetAxis("Mouse Y") * m_mouseSenstivity * (m_isScoped ? 0.5f : 1);
 
             transform.Rotate(0, m_rotX, 0);
             m_playerHeadGO.transform.Rotate(-m_rotY, 0, 0);
             Quaternion tempRot = m_playerHeadGO.transform.rotation;
-            tempRot = new Quaternion(Mathf.Clamp(tempRot.x, -0.3f, 0.3f), tempRot.y, tempRot.z, tempRot.w);
+            tempRot = new Quaternion(Mathf.Clamp(tempRot.x, -0.2f, 0.3f), tempRot.y, tempRot.z, tempRot.w);
             m_playerHeadGO.transform.rotation = tempRot;
-            m_playerHeadGO.transform.eulerAngles = new Vector3(m_playerHeadGO.transform.eulerAngles.x, m_playerHeadGO.transform.eulerAngles.y, 0);
+            m_playerHeadGO.transform.localEulerAngles = new Vector3(m_playerHeadGO.transform.localEulerAngles.x, 0, 0);
 
             if (m_isgrounded)
             {
-                m_currentPlayerPos = this.transform.position;
-
                 float tempMultiplier = 1;
                 m_moveFB = Input.GetAxis("Vertical") * m_runSpeed;
                 m_moveLR = Input.GetAxis("Horizontal") * m_runSpeed;
 
-                m_movement = new Vector3(m_moveLR, 0, m_moveFB);
+                Vector3 m_movement = new Vector3(m_moveLR, 0, m_moveFB);
+
+                if (Mathf.Abs(m_moveFB) > 0 || Mathf.Abs(m_moveLR) > 0)
+                {
+                    if (!m_playerAlreadyAnimating)
+                        StartCoroutine("AnimatePlayer");
+                }
+
                 if (Input.GetKey(KeyCode.LeftShift))
                 {
+                    m_weaponSystem.StopReload();
+                    m_playerHeadGO.GetComponent<Animator>().speed = 2;
                     tempMultiplier = m_sprintMultiplier;
+                }
+                else if (Input.GetKeyUp(KeyCode.LeftShift))
+                {
+                    m_playerHeadGO.GetComponent<Animator>().speed = 1;
                 }
 
                 if (Input.GetAxis("Jump") > 0)
                 {
-                    Vector3 forwardForce = (m_currentPlayerPos - m_lastPlayerPos) * 30;
-                    forwardForce = new Vector3(Mathf.Clamp(forwardForce.x, -0.3f, 0.3f), forwardForce.y, forwardForce.z);
-                    this.GetComponent<Rigidbody>().AddForce((Vector3.up * m_jumpForce + forwardForce) * tempMultiplier, ForceMode.Impulse);
-                    Debug.Log("Jump");
+                    Vector3 forwardForce = ((Vector3.forward * m_moveFB) / 3 + (Vector3.right * m_moveLR) / 3)* tempMultiplier;
+                    m_isgrounded = false;
+                    this.GetComponent<Rigidbody>().AddRelativeForce((Vector3.up * m_jumpForce + forwardForce) * tempMultiplier, ForceMode.Impulse);
                 }
                 m_movement *= tempMultiplier;
 
-                if (Input.GetKey(KeyCode.LeftShift))
-                {
-                    m_movement *= m_sprintMultiplier;
-                }
-                this.transform.Translate(m_movement * Time.deltaTime);
-                m_lastPlayerPos = m_currentPlayerPos;
+                this.transform.Translate(m_movement * Time.deltaTime,Space.Self);
             }
         }
+    }
+
+
+    bool m_playerAlreadyAnimating = false;
+    IEnumerator AnimatePlayer()
+    {
+        m_playerAlreadyAnimating = true;
+        m_playerHeadGO.GetComponent<Animator>().SetBool("Run",true);
+        while (Mathf.Abs(m_moveFB) > 0 || Mathf.Abs(m_moveLR) > 0 && !m_isPlayerDead)
+        {
+            if (!m_isScoped && m_isgrounded)
+            {
+                m_playerHeadGO.GetComponent<Animator>().SetBool("Run", true);
+            }
+            else
+            {
+                m_playerHeadGO.GetComponent<Animator>().SetBool("Run", false);
+            }
+            yield return null;
+        }
+        m_playerHeadGO.GetComponent<Animator>().speed = 1;
+        m_playerAlreadyAnimating = false;
+        m_playerHeadGO.GetComponent<Animator>().SetBool("Run", false);
     }
 
     public void OnPlayerDamage(int amount)
@@ -206,12 +234,17 @@ public class PlayerController : MonoBehaviour {
 
     public void UpdateHealth(int amount)
     {
-        m_currentHealth += amount;
-        m_currentHealth = Mathf.Clamp(m_currentHealth, 0, m_totalHealth);
+        if(m_currentHealth <= m_totalHealth)
+            m_currentHealth += amount;
+        m_currentHealth = Mathf.Clamp(m_currentHealth,0, m_totalHealth);
         m_WeaponHUDHealthTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_currentHealth.ToString(), m_totalHealth.ToString());
-        if(CurrentHealth <= 0)
+        if (CurrentHealth <= 0)
         {
             ShowGameover();
+        }
+        else if (CurrentHealth <= m_totalHealth * 0.3f)
+        {
+            GameManager.Instance.ShowToast("Health Low");
         }
     }
 
@@ -220,6 +253,7 @@ public class PlayerController : MonoBehaviour {
         m_gameoverGO.SetActive(true);
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.None;
+        m_playerHeadGO.GetComponent<Animator>().enabled = false;
         m_isPlayerDead = true;
     }
 
@@ -249,26 +283,51 @@ public class PlayerController : MonoBehaviour {
 
     public void UpdateAmmoAmountHUD()
     {
-        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon.m_currentClipAmmo, m_weaponSystem.CurrentWeapon.m_totalAmmo);
+        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon.m_currentClipAmmo, m_weaponSystem.CurrentWeapon.m_extraAmmo);
     }
 
 
     IEnumerator ShowMouseScope()
     {
+        m_isScoped = true;
         m_weaponSystem.CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("Zoom", true);
         while (Input.GetMouseButton(1))
         {
-          
+            if (m_playerHeadGO.GetComponent<Camera>().fieldOfView > 40)
+            {
+                m_playerHeadGO.GetComponent<Camera>().fieldOfView -= 4;
+            }
+
+            if(Input.GetKeyDown(KeyCode.LeftShift))
+            {
+                break;
+            }
             yield return null;
         }
+        while (m_playerHeadGO.GetComponent<Camera>().fieldOfView < 60)
+        {
+            m_playerHeadGO.GetComponent<Camera>().fieldOfView += 5;
+        }
+        m_isScoped = false;
         m_weaponSystem.CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("Zoom", false);
     }
 
     void OnCollisionEnter(Collision coll)
     {
-        if(coll.transform.name == "Floor")
+        if (coll.transform.name == "Floor" || coll.transform.tag == "AI" || coll.transform.tag == "Obstacle")
         {
-            Invoke("SetIsGroundedTrue", 0.2f);
+            Ray ray = new Ray(this.transform.position, coll.contacts[0].point - this.transform.position);
+            RaycastHit hitInfo;
+
+            Debug.DrawRay(this.transform.position, coll.contacts[0].point - this.transform.position);
+
+            if (Physics.Raycast(ray, out hitInfo, 1))
+            {
+                if (!m_isgrounded)
+                {
+                    Invoke("SetIsGroundedTrue", 0.2f);
+                }
+            }
         }
     }
 
@@ -277,11 +336,12 @@ public class PlayerController : MonoBehaviour {
         m_isgrounded = true;
     }
 
-    void OnCollisionExit(Collision coll)
+    void OnApplicationPause(bool pauseStatus)
     {
-        if (coll.transform.name == "Floor")
+        if (!pauseStatus)
         {
-            m_isgrounded = false;
+            Cursor.visible = false;
+            Cursor.lockState = CursorLockMode.Locked;
         }
     }
 }
