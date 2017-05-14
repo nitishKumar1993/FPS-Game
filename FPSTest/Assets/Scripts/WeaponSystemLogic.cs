@@ -34,20 +34,34 @@ public class WeaponSystemLogic : MonoBehaviour {
         if (WeaponId < m_weaponList.Count && m_currentWeaponID != WeaponId)
         {
             m_currentWeaponID = WeaponId;
-            foreach (Weapon item in m_weaponList)
-            {
-                item.m_weaponGO.SetActive(false);
-            }
-            m_currentWeapon = m_weaponList[WeaponId];
-            m_currentWeapon.m_weaponGO.SetActive(true);
-            if (m_currentWeapon.m_currentClipAmmo == 0)
-                ReloadAmmo();
-            this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+            StopCoroutine("AnimateAndSwitchWeapon");
+            StartCoroutine("AnimateAndSwitchWeapon");
         }
         else
         {
             Debug.Log("Weopon id not found in the list or already equipped");
         }
+    }
+
+    IEnumerator AnimateAndSwitchWeapon()
+    {
+        if (CurrentWeapon != null)
+            CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("DrawIn", false);
+
+        yield return new WaitForSeconds(0.2f);
+
+        foreach (Weapon item in m_weaponList)
+        {
+            item.m_weaponGO.SetActive(false);
+        }
+        m_currentWeapon = m_weaponList[m_currentWeaponID];
+        m_currentWeapon.m_weaponGO.SetActive(true);
+        CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("DrawIn", true);
+        if (m_currentWeapon.m_currentClipAmmo == 0)
+            ReloadAmmo();
+        this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+
+        PlayerController.Instance.OnWeaponSwitched();
     }
 
     public void AddAmmo(int amount)
@@ -121,22 +135,46 @@ public class WeaponSystemLogic : MonoBehaviour {
             //Add recoil code here
             if (m_currentWeapon.m_currentClipAmmo > 0)
             {
-                StopCoroutine("Attack");
-                StartCoroutine("Attack");
+                if (!m_lastAttackActive)
+                {
+                    StopCoroutine("Attack");
+                    StartCoroutine("Attack");
+                }
             }
             else
                 GameManager.Instance.ShowToast("No more Ammo");
         }
     }
 
+
+    bool m_lastAttackActive = false;
     IEnumerator Attack()
     {
-        while (Input.GetMouseButton(0) && m_currentWeapon.m_currentClipAmmo > 0)
+        while (Input.GetMouseButton(0) && m_currentWeapon.m_currentClipAmmo > 0 && !m_reloading)
         {
+            m_lastAttackActive = true;
+
             Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0));
             RaycastHit hitInfo;
            
             GameObject tempBullet = Instantiate(m_currentWeapon.m_ammoPrefab, m_currentWeapon.m_muzzleTransform.position, Quaternion.identity) as GameObject;
+
+            if (m_currentWeapon.m_fireParticleGO != null)
+            {
+                GameObject tempParticle;
+                if (m_currentWeapon.m_muzzleTransform.childCount == 0)
+                {
+                    tempParticle = Instantiate(m_currentWeapon.m_fireParticleGO, m_currentWeapon.m_muzzleTransform.position, Quaternion.identity) as GameObject;
+                    tempParticle.transform.SetParent(m_currentWeapon.m_muzzleTransform);
+                }
+                else
+                {
+                    tempParticle = m_currentWeapon.m_muzzleTransform.GetChild(0).gameObject;
+                }
+                tempParticle.transform.localEulerAngles = Vector3.zero;
+                tempParticle.GetComponent<ParticleSystem>().Play();
+            }
+
             if (Physics.Raycast(ray, out hitInfo, 1000))
             {
                 tempBullet.transform.LookAt(hitInfo.point);
@@ -149,6 +187,8 @@ public class WeaponSystemLogic : MonoBehaviour {
             this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
             yield return new WaitForSeconds(m_currentWeapon.m_shootInterval);
         }
+        m_lastAttackActive = false;
+
         if (m_currentWeapon.m_currentClipAmmo <= 0)
             GameManager.Instance.ShowToast("No Ammo");
     }
@@ -175,7 +215,7 @@ public class WeaponSystemLogic : MonoBehaviour {
         {
            if(hitInfo.transform.tag == "AI")
             {
-                hitInfo.transform.GetComponent<AIController>().OnGotHit(PlayerController.Instance.m_weaponSystem.m_meleeWeapon.m_damage);
+                hitInfo.transform.GetComponent<AIController>().OnGotHit(PlayerController.Instance.PlayerWeaponSystem.m_meleeWeapon.m_damage);
             }
         }
 
@@ -195,6 +235,7 @@ public enum WeaponType { HandHeld,Throughable,Melee}
 [System.Serializable]
 public class Weapon
 {
+    public string m_name;
     public WeaponType m_type;
     public GameObject m_weaponGO;
     public int m_damage;
@@ -204,9 +245,10 @@ public class Weapon
     public int m_maxAmmo;
     public float m_shootInterval;
     public float m_reloadTime;
-    public float m_recoilforce;
+    public float m_recoilForce;
     public GameObject m_ammoPrefab;
     public Transform m_muzzleTransform;
     public Sprite m_weaponSprite;
+    public GameObject m_fireParticleGO;
     public bool m_isShootable = true;
 }

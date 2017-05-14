@@ -24,7 +24,7 @@ public class BulletLogic : MonoBehaviour {
         StopCoroutine("Expire");
         if (coll.transform.tag == "AI")
         {
-            coll.transform.GetComponent<AIController>().OnGotHit(PlayerController.Instance.m_weaponSystem.CurrentWeapon.m_damage);
+            coll.transform.GetComponent<AIController>().OnGotHit(PlayerController.Instance.PlayerWeaponSystem.CurrentWeapon.m_damage);
         }
     }
 

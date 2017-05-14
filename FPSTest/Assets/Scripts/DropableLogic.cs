@@ -41,15 +41,16 @@ public class DropableLogic : MonoBehaviour {
                 PlayerController.Instance.HealPlayer(m_healthHealValue);
                 break;
             case DropabeType.Ammo:
-                PlayerController.Instance.m_weaponSystem.AddAmmo(m_ammoAmount);
+                PlayerController.Instance.PlayerWeaponSystem.AddAmmo(m_ammoAmount);
                 break;
         }
 
         float tempTimer = 1;
         this.GetComponent<BoxCollider>().enabled = false;
-        this.transform.GetChild(0).GetComponent<MeshRenderer>().enabled = false;
-        this.transform.GetChild(0).FindChild("Particle System").gameObject.SetActive(false);
-        this.transform.GetChild(0).FindChild("Particle System2").gameObject.SetActive(true);
+        Transform meshGO = this.transform.FindChild("Mesh");
+        meshGO.GetComponent<MeshRenderer>().enabled = false;
+        meshGO.FindChild("Particle System").gameObject.SetActive(false);
+        meshGO.FindChild("Particle System2").gameObject.SetActive(true);
         while (tempTimer > 0)
         {
 

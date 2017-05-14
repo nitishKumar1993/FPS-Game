@@ -6,6 +6,11 @@ using UnityEngine.UI;
 public class PlayerController : MonoBehaviour {
     private static PlayerController _instance;
 
+    public float m_runSpeed = 1.0f;
+    public float m_sprintMultiplier = 1;
+    public float m_mouseSenstivity = 1.0f;
+    public float m_jumpForce = 5.0f;
+
     public GameObject m_playerHeadGO;
     public GameObject m_WeaponHUDImgGO;
     public GameObject m_WeaponHUDWeaponsContainerGO;
@@ -14,11 +19,6 @@ public class PlayerController : MonoBehaviour {
     public Image m_WeaponHUDBloodScreenImg;
 
     public GameObject m_gameoverGO;
-
-    public float m_runSpeed = 1.0f;
-    public float m_sprintMultiplier = 1;
-    public float m_mouseSenstivity = 1.0f;
-    public float m_jumpForce = 5.0f;
 
     int m_totalHealth = 100;
     int m_currentHealth;
@@ -33,8 +33,12 @@ public class PlayerController : MonoBehaviour {
     float m_rotX;
     float m_rotY;
 
-    public WeaponSystemLogic m_weaponSystem;
+    WeaponSystemLogic m_weaponSystem;
     
+    public WeaponSystemLogic PlayerWeaponSystem
+    {
+        get { return m_weaponSystem; }
+    }
 
     public static PlayerController Instance
     {
@@ -63,7 +67,6 @@ public class PlayerController : MonoBehaviour {
     {
         m_playerHeadGO.transform.eulerAngles = Vector3.zero;
         SwitchWeapon(0);
-        m_weaponSystem.ReloadAmmo();
         m_currentHealth = m_totalHealth;
     }
 
@@ -128,9 +131,12 @@ public class PlayerController : MonoBehaviour {
     void SwitchWeapon(int id)
     {
         m_weaponSystem.SwitchWeapon(id);
-        UpdateWeaponHUD();
     }
 
+    public void OnWeaponSwitched()
+    {
+        UpdateWeaponHUD();
+    }
 
 	void FixedUpdate () {
         if (!m_isPlayerDead)
@@ -258,7 +264,7 @@ public class PlayerController : MonoBehaviour {
     }
 
     void UpdateWeaponHUD()
-    {
+    {   
         m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_weaponSystem.CurrentWeapon.m_weaponSprite;
         for (int i = 1; i <= m_weaponSystem.m_weaponList.Count; i++)
         {

@@ -29,7 +29,7 @@ public class DropableManager : MonoBehaviour {
             GameObject tempDropable = null;
             if (PlayerController.Instance.CurrentHealth > m_healthDropThreshold/2)
             {
-                if (PlayerController.Instance.m_weaponSystem.CurrentWeaponTotalAmmo < m_ammoDropThreshold)
+                if (PlayerController.Instance.PlayerWeaponSystem.CurrentWeaponTotalAmmo < m_ammoDropThreshold)
                 {
                     tempDropable = Instantiate(m_ammoDropablePrefab, pos , Quaternion.identity) as GameObject;
                 }
@@ -44,8 +44,8 @@ public class DropableManager : MonoBehaviour {
             }
             if (tempDropable != null)
             {
-                Vector3 tempPos = tempDropable.transform.Find("Mesh/Plane").transform.position;
-                tempDropable.transform.Find("Mesh/Plane").transform.position = new Vector3(tempPos.x, 0, tempPos.z);
+                Vector3 tempPos = tempDropable.transform.FindChild("Plane").transform.position;
+                tempDropable.transform.FindChild("Plane").transform.position = new Vector3(tempPos.x, 0, tempPos.z);
             }
         }
     }
