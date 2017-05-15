@@ -12,13 +12,6 @@ public class PlayerController : MonoBehaviour {
     public float m_jumpForce = 5.0f;
 
     public GameObject m_playerHeadGO;
-    public GameObject m_WeaponHUDImgGO;
-    public GameObject m_WeaponHUDWeaponsContainerGO;
-    public GameObject m_WeaponHUDAmmoTextGO;
-    public GameObject m_WeaponHUDHealthTextGO;
-    public Image m_WeaponHUDBloodScreenImg;
-
-    public GameObject m_gameoverGO;
 
     int m_totalHealth = 100;
     int m_currentHealth;
@@ -67,6 +60,7 @@ public class PlayerController : MonoBehaviour {
     {
         m_playerHeadGO.transform.eulerAngles = Vector3.zero;
         SwitchWeapon(0);
+        SwitchThrowable(0);
         m_currentHealth = m_totalHealth;
     }
 
@@ -80,6 +74,12 @@ public class PlayerController : MonoBehaviour {
                 StopCoroutine("ShowMouseScope");
                 StartCoroutine("ShowMouseScope");
             }
+
+            if (Input.GetMouseButtonDown(2))
+            {
+                m_weaponSystem.UseThrowable();
+            }
+
             if (Input.GetMouseButtonDown(0) && m_weaponSystem.CurrentWeapon.m_isShootable)
             {
                 m_weaponSystem.Shoot();
@@ -108,17 +108,11 @@ public class PlayerController : MonoBehaviour {
 
             if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
             {
-                int weaponID = m_weaponSystem.CurrentWeaponID + 1;
-                if (weaponID == m_weaponSystem.m_weaponList.Count)
-                    weaponID = 0;
-                SwitchWeapon(weaponID);
+              
             }
             else if (Input.GetAxis("Mouse ScrollWheel") < 0f) // backwards
             {
-                int weaponID = m_weaponSystem.CurrentWeaponID - 1;
-                if (weaponID < 0)
-                    weaponID = m_weaponSystem.m_weaponList.Count - 1;
-                SwitchWeapon(weaponID);
+              
             }
 
             if (Input.GetKeyDown(KeyCode.R))
@@ -133,9 +127,14 @@ public class PlayerController : MonoBehaviour {
         m_weaponSystem.SwitchWeapon(id);
     }
 
+    void SwitchThrowable(int id)
+    {
+        m_weaponSystem.SwitchThrowable(id);
+    }
+
     public void OnWeaponSwitched()
     {
-        UpdateWeaponHUD();
+        GameManager.Instance.UpdateWeaponHUD();
     }
 
 	void FixedUpdate () {
@@ -215,9 +214,7 @@ public class PlayerController : MonoBehaviour {
     public void OnPlayerDamage(int amount)
     {
         UpdateHealth(-amount);
-
-        StopCoroutine("AnimateBloodOnScreen");
-        StartCoroutine("AnimateBloodOnScreen");
+        GameManager.Instance.AnimateBlood();
     }
 
     public void HealPlayer(int amount)
@@ -225,71 +222,22 @@ public class PlayerController : MonoBehaviour {
         UpdateHealth(amount);
     }
 
-    IEnumerator AnimateBloodOnScreen()
-    {
-        Color currentColor = m_WeaponHUDBloodScreenImg.color;
-        m_WeaponHUDBloodScreenImg.color = new Color(currentColor.r, currentColor.g, currentColor.b, currentColor.a + 0.3f);
-        float alpha = Mathf.Clamp(m_WeaponHUDBloodScreenImg.color.a, 0, 1);
-        while (alpha > 0)
-        {
-            alpha -= 0.005f;
-            m_WeaponHUDBloodScreenImg.color = new Color(currentColor.r, currentColor.g, currentColor.b, alpha);
-            yield return null;
-        }
-    }
-
     public void UpdateHealth(int amount)
     {
         if(m_currentHealth <= m_totalHealth)
             m_currentHealth += amount;
         m_currentHealth = Mathf.Clamp(m_currentHealth,0, m_totalHealth);
-        m_WeaponHUDHealthTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_currentHealth.ToString(), m_totalHealth.ToString());
+        GameManager.Instance.HUDHealth(m_currentHealth, m_totalHealth);
         if (CurrentHealth <= 0)
         {
-            ShowGameover();
+            m_playerHeadGO.GetComponent<Animator>().enabled = false;
+            m_isPlayerDead = true;
+            GameManager.Instance.ShowGameover();
         }
         else if (CurrentHealth <= m_totalHealth * 0.3f)
         {
             GameManager.Instance.ShowToast("Health Low");
         }
-    }
-
-    void ShowGameover()
-    {
-        m_gameoverGO.SetActive(true);
-        Cursor.visible = true;
-        Cursor.lockState = CursorLockMode.None;
-        m_playerHeadGO.GetComponent<Animator>().enabled = false;
-        m_isPlayerDead = true;
-    }
-
-    void UpdateWeaponHUD()
-    {   
-        m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_weaponSystem.CurrentWeapon.m_weaponSprite;
-        for (int i = 1; i <= m_weaponSystem.m_weaponList.Count; i++)
-        {
-            string tempName = "Weapon" + i.ToString();
-            Transform currentWeaponGO = m_WeaponHUDWeaponsContainerGO.transform.FindChild(tempName);
-            if (currentWeaponGO == null)
-            {
-                currentWeaponGO = (Instantiate(m_WeaponHUDWeaponsContainerGO.transform.FindChild("Weapon1").gameObject, Vector3.zero, Quaternion.identity) as GameObject).transform;
-                currentWeaponGO.SetParent(m_WeaponHUDWeaponsContainerGO.transform,false);
-                currentWeaponGO.name = tempName;
-            }
-
-            currentWeaponGO.FindChild("Image").GetComponent<Image>().sprite = m_weaponSystem.m_weaponList[i - 1].m_weaponSprite;
-            if(m_weaponSystem.m_weaponList[i - 1] == m_weaponSystem.CurrentWeapon)
-            {
-                currentWeaponGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
-            }
-            else
-                currentWeaponGO.GetComponent<Image>().color = new Color(1, 1, 1, 0.3f);
-        }
-    }
-
-    public void UpdateAmmoAmountHUD()
-    {
-        m_WeaponHUDAmmoTextGO.GetComponent<Text>().text = string.Format("{0}/{1}", m_weaponSystem.CurrentWeapon.m_currentClipAmmo, m_weaponSystem.CurrentWeapon.m_extraAmmo);
     }
 
 

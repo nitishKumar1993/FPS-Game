@@ -5,11 +5,14 @@ using UnityEngine;
 public class WeaponSystemLogic : MonoBehaviour {
 
     public List<Weapon> m_weaponList;
-    public List<Weapon> m_throughableList;
+    public List<Weapon> m_throwableList;
     public Weapon m_meleeWeapon;
 
     Weapon m_currentWeapon;
     int m_currentWeaponID = -1;
+
+    Weapon m_currentThrowable;
+    int m_currentThrowableID = -1;
 
     bool m_reloading = false;
 
@@ -21,6 +24,11 @@ public class WeaponSystemLogic : MonoBehaviour {
     public int CurrentWeaponID
     {
      get { return m_currentWeaponID; }
+    }
+
+    public Weapon CurrentThrowable
+    {
+        get { return m_currentThrowable; }
     }
 
     //Ammo including in the actove clip
@@ -59,9 +67,14 @@ public class WeaponSystemLogic : MonoBehaviour {
         CurrentWeapon.m_weaponGO.GetComponent<Animator>().SetBool("DrawIn", true);
         if (m_currentWeapon.m_currentClipAmmo == 0)
             ReloadAmmo();
-        this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+        GameManager.Instance.UpdateAmmoAmountHUD();
 
         PlayerController.Instance.OnWeaponSwitched();
+    }
+
+    public void SwitchThrowable(int id)
+    {
+        m_currentThrowable = m_throwableList[0];
     }
 
     public void AddAmmo(int amount)
@@ -70,14 +83,14 @@ public class WeaponSystemLogic : MonoBehaviour {
             m_currentWeapon.m_extraAmmo += amount;
         else m_currentWeapon.m_extraAmmo += (m_currentWeapon.m_maxAmmo - (m_currentWeapon.m_extraAmmo + m_currentWeapon.m_currentClipAmmo));
 
-        this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+        GameManager.Instance.UpdateAmmoAmountHUD();
     }
 
     public void ReloadAmmo()
     {
         if (m_currentWeapon.m_extraAmmo > 0 && m_currentWeapon.m_currentClipAmmo < m_currentWeapon.m_ammoPerClip && !m_reloading)
         {
-            GameManager.Instance.ShowToast("Reloading",true);
+            GameManager.Instance.ShowToast("Reloading...",true);
             StartCoroutine("ReloadAmmoCR");
         }
         else
@@ -87,7 +100,7 @@ public class WeaponSystemLogic : MonoBehaviour {
             else if(m_currentWeapon.m_currentClipAmmo == m_currentWeapon.m_ammoPerClip)
                 GameManager.Instance.ShowToast("Ammo full");
             else if (m_reloading)
-                GameManager.Instance.ShowToast("Wait, reloading");
+                GameManager.Instance.ShowToast("Wait, reloading...",true);
         }
     }
 
@@ -123,7 +136,7 @@ public class WeaponSystemLogic : MonoBehaviour {
             int ammoToAdd = m_currentWeapon.m_extraAmmo >= m_currentWeapon.m_ammoPerClip ? (m_currentWeapon.m_ammoPerClip - m_currentWeapon.m_currentClipAmmo) : m_currentWeapon.m_extraAmmo;
             m_currentWeapon.m_currentClipAmmo += ammoToAdd;
             m_currentWeapon.m_extraAmmo -= ammoToAdd;
-            this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+            GameManager.Instance.UpdateAmmoAmountHUD();
         }
         m_reloading = false;
     }
@@ -142,7 +155,7 @@ public class WeaponSystemLogic : MonoBehaviour {
                 }
             }
             else
-                GameManager.Instance.ShowToast("No more Ammo");
+                GameManager.Instance.ShowToast("Reload");
         }
     }
 
@@ -184,13 +197,13 @@ public class WeaponSystemLogic : MonoBehaviour {
                 tempBullet.transform.LookAt(ray.GetPoint(500));
             }
             m_currentWeapon.m_currentClipAmmo--;
-            this.GetComponent<PlayerController>().UpdateAmmoAmountHUD();
+            GameManager.Instance.UpdateAmmoAmountHUD();
             yield return new WaitForSeconds(m_currentWeapon.m_shootInterval);
         }
         m_lastAttackActive = false;
 
         if (m_currentWeapon.m_currentClipAmmo <= 0)
-            GameManager.Instance.ShowToast("No Ammo");
+            GameManager.Instance.ShowToast("Reload");
     }
 
     public void AttackMelee()
@@ -227,6 +240,30 @@ public class WeaponSystemLogic : MonoBehaviour {
         }
         m_currentWeapon.m_weaponGO.transform.parent.gameObject.SetActive(true);
         m_attackingMelee = false;
+    }
+
+
+    bool m_isLastThrowInProcess;
+    public void UseThrowable()
+    {
+        if(m_currentThrowable.m_currentClipAmmo > 0 && !m_isLastThrowInProcess)
+        {
+            m_isLastThrowInProcess = true;
+            GameObject tempThrowable = Instantiate(m_currentThrowable.m_weaponGO, this.GetComponent<PlayerController>().m_playerHeadGO.transform.position + Vector3.up * 0.15f, Quaternion.identity) as GameObject;
+            tempThrowable.transform.eulerAngles = this.GetComponent<PlayerController>().m_playerHeadGO.transform.eulerAngles;
+            float angleForce = -this.GetComponent<PlayerController>().m_playerHeadGO.transform.rotation.ToEulerAngles().x * 3.5f;
+            tempThrowable.GetComponent<Rigidbody>().AddRelativeForce(Vector3.forward * (10 + angleForce) + Vector3.up * 5, ForceMode.Impulse);
+            tempThrowable.transform.localEulerAngles += Vector3.one * Random.Range(-60, 60);
+
+            m_currentThrowable.m_currentClipAmmo--;
+            GameManager.Instance.UpdateThrowableAmountHUD();
+            Invoke("ResetThrowableBool", m_currentThrowable.m_shootInterval);
+        }
+    }
+
+    void ResetThrowableBool()
+    {
+        m_isLastThrowInProcess = false;
     }
 }
 
