@@ -20,7 +20,7 @@ public class ThrowableLogic : MonoBehaviour {
                 StartCoroutine(RunHandGrenadeExpiryTimer());
                 break;
             case ThrowableType.Mine:
-                StartCoroutine(CheckAICollisionForMines());
+                StartCoroutine(CheckCollisionOnMine());
                 break; 
         }
     }
@@ -51,7 +51,7 @@ public class ThrowableLogic : MonoBehaviour {
         Destroy(this.gameObject);
     }
 
-    IEnumerator CheckAICollisionForMines()
+    IEnumerator CheckCollisionOnMine()
     {
         bool m_exploded = false;
         while(!m_exploded)

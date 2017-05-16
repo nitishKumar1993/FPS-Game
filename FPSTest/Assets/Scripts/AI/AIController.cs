@@ -10,12 +10,19 @@ public class AIController : MonoBehaviour {
 
     public int m_totalhealth = 100;
     public int m_currentHealth = 100;
+    public GameObject m_weaponHolderGO;
+
+    WeaponSystemLogic m_weaponSystem;
 
     // Use this for initialization
     void Start () {
+        m_weaponSystem = this.GetComponent<WeaponSystemLogic>();
+       /* if(m_weaponSystem != null)
+            m_weaponSystem.Init(m_weaponHolderGO.transform, 0, 0);*/
+
         m_currentHealth = m_totalhealth;
         StartCoroutine(MoveTowardPlayer());
-	}
+    }
 
     IEnumerator MoveTowardPlayer()
     {
@@ -43,6 +50,7 @@ public class AIController : MonoBehaviour {
 
     void DestroyAndCheckDropables()
     {
+        ScoreManager.Instance.AddScore(m_pointsOnDeath);
         DropableManager.Instance.CheckAndDropItem(this.transform.position);
         AISpawner.Instance.DestroyAI(this.gameObject);
     }
@@ -51,6 +59,5 @@ public class AIController : MonoBehaviour {
     {
         if(coll.transform.tag == "Player")
             PlayerController.Instance.OnPlayerDamage(m_damage);
-        ScoreManager.Instance.AddScore(m_pointsOnDeath);
     }
 }

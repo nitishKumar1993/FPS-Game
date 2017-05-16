@@ -34,12 +34,12 @@ public class BulletLogic : MonoBehaviour {
     IEnumerator AddRepulsionForce()
     {
         float initialForce = m_forwardImpulseForce;
-        this.transform.eulerAngles -= Vector3.right * 5;
+        this.transform.eulerAngles -= Vector3.right * 7;
         while (true)
         {
             initialForce --;
             this.GetComponent<Rigidbody>().AddRelativeForce(Vector3.forward * initialForce, ForceMode.Force);
-            this.transform.eulerAngles += new Vector3(Random.Range(-2,2), Random.Range(-2, 2), Random.Range(-2, 2));
+            this.transform.eulerAngles += new Vector3(Random.Range(-1,2), Random.Range(-1, 2), Random.Range(-1, 2));
             yield return new WaitForSeconds(Random.Range(0.1f, 0.2f));
         }
     }
@@ -69,7 +69,7 @@ public class BulletLogic : MonoBehaviour {
         if(m_trailParticleGO != null)
             m_trailParticleGO.SetActive(false);
 
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(1.5f);
 
         Destroy(this.gameObject);
     }

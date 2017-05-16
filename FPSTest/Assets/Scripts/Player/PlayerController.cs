@@ -59,8 +59,9 @@ public class PlayerController : MonoBehaviour {
     void Start()
     {
         m_playerHeadGO.transform.eulerAngles = Vector3.zero;
-        SwitchWeapon(0);
-        SwitchThrowable(1);
+
+        m_weaponSystem.Init(m_playerHeadGO.transform, 0, 0);
+
         m_currentHealth = m_totalHealth;
     }
 
@@ -109,7 +110,7 @@ public class PlayerController : MonoBehaviour {
             if (Input.GetAxis("Mouse ScrollWheel") > 0f) // forward
             {
                 int throwableID = m_weaponSystem.CurrentThrowableID + 1;
-                if (throwableID == m_weaponSystem.m_throwableList.Count)
+                if (throwableID == m_weaponSystem.PlayerThrowableList.Count)
                     throwableID = 0;
                 SwitchThrowable(throwableID);
             }
@@ -117,7 +118,7 @@ public class PlayerController : MonoBehaviour {
             {
                 int throwableID = m_weaponSystem.CurrentThrowableID - 1;
                 if (throwableID < 0)
-                    throwableID = m_weaponSystem.m_throwableList.Count - 1;
+                    throwableID = m_weaponSystem.PlayerThrowableList.Count - 1;
                 SwitchThrowable(throwableID);
             }
 

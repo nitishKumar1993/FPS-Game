@@ -64,7 +64,7 @@ public class GameManager : MonoBehaviour {
     public void UpdateWeaponHUD()
     {
         m_WeaponHUDImgGO.GetComponent<Image>().sprite = m_playerWeaponSystem.CurrentWeapon.m_weaponSprite;
-        for (int i = 1; i <= m_playerWeaponSystem.m_weaponList.Count; i++)
+        for (int i = 1; i <= m_playerWeaponSystem.PlayerWeaponList.Count; i++)
         {
             string tempName = "Weapon" + i.ToString();
             Transform currentWeaponGO = m_WeaponHUDWeaponsContainerGO.transform.FindChild(tempName);
@@ -75,8 +75,8 @@ public class GameManager : MonoBehaviour {
                 currentWeaponGO.name = tempName;
             }
 
-            currentWeaponGO.FindChild("Image").GetComponent<Image>().sprite = m_playerWeaponSystem.m_weaponList[i - 1].m_weaponSprite;
-            if (m_playerWeaponSystem.m_weaponList[i - 1] == m_playerWeaponSystem.CurrentWeapon)
+            currentWeaponGO.FindChild("Image").GetComponent<Image>().sprite = m_playerWeaponSystem.PlayerWeaponList[i - 1].m_weaponSprite;
+            if (m_playerWeaponSystem.PlayerWeaponList[i - 1] == m_playerWeaponSystem.CurrentWeapon)
             {
                 currentWeaponGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
             }
@@ -87,13 +87,13 @@ public class GameManager : MonoBehaviour {
 
     public void UpdateThrowableAmountHUD()
     {
-        m_WeaponHUDThrowableTextGO.GetComponent<Text>().text = m_playerWeaponSystem.CurrentThrowable.m_currentClipAmmo.ToString();
+        m_WeaponHUDThrowableTextGO.GetComponent<Text>().text = m_playerWeaponSystem.CurrentThrowable.m_currentClipAmmo.ToString() + "x";
     }
 
     public void UpdateThrowableHUD()
     {
         m_WeaponHUDThrowableImgGO.GetComponent<Image>().sprite = m_playerWeaponSystem.CurrentThrowable.m_weaponSprite;
-        for (int i = 1; i <= m_playerWeaponSystem.m_throwableList.Count; i++)
+        for (int i = 1; i <= m_playerWeaponSystem.PlayerThrowableList.Count; i++)
         {
             string tempName = "Throwable" + i.ToString();
             Transform currentThrowableGO = m_WeaponHUDThrowablesContainerGO.transform.FindChild(tempName);
@@ -104,8 +104,8 @@ public class GameManager : MonoBehaviour {
                 currentThrowableGO.name = tempName;
             }
 
-            currentThrowableGO.FindChild("Image").GetComponent<Image>().sprite = m_playerWeaponSystem.m_throwableList[i - 1].m_weaponSprite;
-            if (m_playerWeaponSystem.m_throwableList[i - 1] == m_playerWeaponSystem.CurrentThrowable)
+            currentThrowableGO.FindChild("Image").GetComponent<Image>().sprite = m_playerWeaponSystem.PlayerThrowableList[i - 1].m_weaponSprite;
+            if (m_playerWeaponSystem.PlayerThrowableList[i - 1] == m_playerWeaponSystem.CurrentThrowable)
             {
                 currentThrowableGO.GetComponent<Image>().color = new Color(0, 0, 0, 0.3f);
             }

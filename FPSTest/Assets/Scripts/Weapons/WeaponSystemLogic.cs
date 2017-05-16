@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class WeaponSystemLogic : MonoBehaviour {
+    public List<int> m_currentWeaponsIndexList;
+    public List<int> m_currentThrowablesIndexList;
+    public int m_currentMeleeWeaponIndex;
 
-    public List<Weapon> m_weaponList;
-    public List<Weapon> m_throwableList;
-    public Weapon m_meleeWeapon;
+    List<Weapon> m_weaponList = new List<Weapon>();
+    List<Weapon> m_throwableList = new List<Weapon>();
+    Weapon m_meleeWeapon;
 
     Weapon m_currentWeapon;
     int m_currentWeaponID = -1;
@@ -15,6 +18,79 @@ public class WeaponSystemLogic : MonoBehaviour {
     int m_currentThrowableID = -1;
 
     bool m_reloading = false;
+
+    public List<Weapon> PlayerWeaponList
+    {
+        get { return m_weaponList; }
+    }
+
+    public void AddWeapon(int index,Transform parent)
+    {
+        if (WeaponsManager.Instance.m_weaponList.Count > index)
+        {
+            Debug.Log("Adding Weapon :" + WeaponsManager.Instance.m_weaponList[index].m_name);
+
+            GameObject weaponHoster;
+            if (parent.FindChild("Weapon") != null)
+            {
+                weaponHoster = parent.FindChild("Weapon").gameObject;
+            }
+            else
+                weaponHoster = new GameObject();
+            weaponHoster.name = "Weapon";
+            weaponHoster.transform.SetParent(parent);
+            weaponHoster.transform.localPosition = Vector3.zero;
+            GameObject tempWeaponGO = Instantiate(WeaponsManager.Instance.m_weaponList[index].m_weaponGO, Vector3.zero, Quaternion.identity) as GameObject;
+            tempWeaponGO.name = WeaponsManager.Instance.m_weaponList[index].m_name;
+            tempWeaponGO.transform.SetParent(weaponHoster.transform);
+            tempWeaponGO.transform.localPosition = Vector3.zero;
+
+            WeaponsManager.Instance.m_weaponList[index].m_muzzleTransform = tempWeaponGO.transform.FindChild("Muzzle");
+            WeaponsManager.Instance.m_weaponList[index].m_weaponGO = tempWeaponGO;
+
+            Weapon tempWeapon = WeaponsManager.Instance.m_weaponList[index];
+            tempWeapon.m_muzzleTransform = tempWeaponGO.transform.FindChild("Muzzle");
+            tempWeapon.m_weaponGO = tempWeaponGO;
+
+            m_weaponList.Add(tempWeapon);
+        }
+        else
+            Debug.Log("Weapon ID doesnt exist");
+    }
+
+    public List<Weapon> PlayerThrowableList
+    {
+        get { return m_throwableList; }
+    }
+
+    public void AddThrowable(int index)
+    {
+        if (WeaponsManager.Instance.m_throwableList.Count > index)
+        {
+            Debug.Log("Adding Weapon :" + WeaponsManager.Instance.m_throwableList[index].m_name);
+            m_throwableList.Add(WeaponsManager.Instance.m_throwableList[index]);
+        }
+        else
+            Debug.Log("Throwable ID doesnt exist");
+    }
+
+    public void SetMeleeWeapon(int index, Transform parent)
+    {
+        if (WeaponsManager.Instance.m_meleeList.Count > index)
+        {
+            Debug.Log("Setting Melee Weapon :" + WeaponsManager.Instance.m_meleeList[index].m_name);
+            m_meleeWeapon = WeaponsManager.Instance.m_meleeList[index];
+
+            GameObject tempMeleeWeapon = Instantiate(WeaponsManager.Instance.m_meleeList[index].m_weaponGO, Vector3.zero, WeaponsManager.Instance.m_meleeList[index].m_weaponGO.transform.rotation) as GameObject;
+            tempMeleeWeapon.name = WeaponsManager.Instance.m_meleeList[index].m_name;
+            tempMeleeWeapon.transform.SetParent(parent.transform);
+            tempMeleeWeapon.transform.localPosition = Vector3.zero;
+            m_meleeWeapon.m_weaponGO = tempMeleeWeapon;
+        }
+        else
+            Debug.Log("Melee ID doesnt exist");
+       
+    }
 
     public Weapon CurrentWeapon
     {
@@ -36,16 +112,34 @@ public class WeaponSystemLogic : MonoBehaviour {
         get { return m_currentThrowableID; }
     }
 
-    //Ammo including in the actove clip
+    //Ammo including in the active clip
     public int CurrentWeaponTotalAmmo
     {
         get { return m_currentWeapon.m_extraAmmo + m_currentWeapon.m_currentClipAmmo; }
     }
 
+    public void Init(Transform parentTransform,int defaultWeaponIndex,int defaultThrowableIndex)
+    {
+        for (int i = 0; i < m_currentWeaponsIndexList.Count; i++)
+        {
+            AddWeapon(m_currentWeaponsIndexList[i], parentTransform);
+        }
+        for (int i = 0; i < m_currentThrowablesIndexList.Count; i++)
+        {
+            AddThrowable(m_currentThrowablesIndexList[i]);
+        }
+        SetMeleeWeapon(m_currentMeleeWeaponIndex, parentTransform);
+
+        SwitchWeapon(defaultWeaponIndex);
+        SwitchThrowable(defaultWeaponIndex);
+    }
+
     public void SwitchWeapon(int WeaponId)
     {
+        Debug.Log("SwitchWeapon :" + WeaponId);
         if (WeaponId < m_weaponList.Count && m_currentWeaponID != WeaponId)
         {
+            StopReload();
             m_currentWeaponID = WeaponId;
             StopCoroutine("AnimateAndSwitchWeapon");
             StartCoroutine("AnimateAndSwitchWeapon");
@@ -157,25 +251,19 @@ public class WeaponSystemLogic : MonoBehaviour {
             //Add recoil code here
             if (m_currentWeapon.m_currentClipAmmo > 0)
             {
-                if (!m_lastAttackActive)
-                {
-                    StopCoroutine("Attack");
-                    StartCoroutine("Attack");
-                }
+                StopCoroutine("ShootCR");
+                StartCoroutine("ShootCR");
             }
             else
-                GameManager.Instance.ShowToast("Reload");
+                ReloadAmmo();
         }
     }
 
 
-    bool m_lastAttackActive = false;
-    IEnumerator Attack()
+    IEnumerator ShootCR()
     {
         while (Input.GetMouseButton(0) && m_currentWeapon.m_currentClipAmmo > 0 && !m_reloading)
         {
-            m_lastAttackActive = true;
-
             Ray ray = Camera.main.ScreenPointToRay(new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0));
             RaycastHit hitInfo;
            
@@ -209,12 +297,10 @@ public class WeaponSystemLogic : MonoBehaviour {
             GameManager.Instance.UpdateAmmoAmountHUD();
             yield return new WaitForSeconds(m_currentWeapon.m_shootInterval);
         }
-        m_lastAttackActive = false;
 
         if (m_currentWeapon.m_currentClipAmmo <= 0)
         {
             ReloadAmmo();
-            GameManager.Instance.ShowToast("Reloading...");
         }
            
     }
@@ -259,7 +345,6 @@ public class WeaponSystemLogic : MonoBehaviour {
     bool m_isLastThrowInProcess;
     public void UseThrowable()
     {
-        Debug.Log(m_currentThrowable.m_weaponGO.name);
         if(m_currentThrowable.m_currentClipAmmo > 0 && !m_isLastThrowInProcess)
         {
             m_isLastThrowInProcess = true;
